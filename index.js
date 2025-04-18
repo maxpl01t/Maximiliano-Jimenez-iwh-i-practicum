@@ -1,71 +1,133 @@
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const app = express();
+const port = 3000;
 
-app.set('view engine', 'pug');
-app.use(express.static(__dirname + '/public'));
+const apiKey = process.env.HUBSPOT_API_KEY;
+
+// Set up middleware
+app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.set('view engine', 'pug');
 
-// * Please DO NOT INCLUDE the private app access token in your repo. Don't do this practicum in your normal account.
-const PRIVATE_APP_ACCESS = '';
-
-// TODO: ROUTE 1 - Create a new app.get route for the homepage to call your custom object data. Pass this data along to the front-end and create a new pug template in the views folder.
-
-// * Code for Route 1 goes here
-
-// TODO: ROUTE 2 - Create a new app.get route for the form to create or update new custom object data. Send this data along in the next route.
-
-// * Code for Route 2 goes here
-
-// TODO: ROUTE 3 - Create a new app.post route for the custom objects form to create or update your custom object data. Once executed, redirect the user to the homepage.
-
-// * Code for Route 3 goes here
-
-/** 
-* * This is sample code to give you a reference for how you should structure your calls. 
-
-* * App.get sample
-app.get('/contacts', async (req, res) => {
-    const contacts = 'https://api.hubspot.com/crm/v3/objects/contacts';
-    const headers = {
-        Authorization: `Bearer ${PRIVATE_APP_ACCESS}`,
-        'Content-Type': 'application/json'
-    }
-    try {
-        const resp = await axios.get(contacts, { headers });
-        const data = resp.data.results;
-        res.render('contacts', { title: 'Contacts | HubSpot APIs', data });      
-    } catch (error) {
-        console.error(error);
-    }
+// Configure axios for HubSpot API
+const hubspotClient = axios.create({
+  baseURL: 'https://api.hubapi.com', // Or https://api.hubspot.com
+  headers: {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json'
+  }
 });
 
-* * App.post sample
-app.post('/update', async (req, res) => {
-    const update = {
-        properties: {
-            "favorite_book": req.body.newVal
-        }
+// Homepage route
+app.get('/', async (req, res) => {
+  try {
+    console.log('Fetching company records...');
+
+    // Using the exact same query as my successful cURL command to retreive specific properties from the custom object via API
+    const response = await hubspotClient.get('/crm/v3/objects/doctors', {
+      params: {
+        limit: 20,
+        properties: 'doctor_id,doctor_full_name,doctor_medical_specialty',
+        archived: false
+      }
+    });
+
+    console.log('API Response:', JSON.stringify(response.data, null, 2));
+
+    const records = response.data.results || [];
+    console.log(`Found ${records.length} doctor records`);
+
+    // If we have records, log what properties they have
+    if (records.length > 0) {
+      console.log('First record properties:', Object.keys(records[0].properties));
     }
 
-    const email = req.query.email;
-    const updateContact = `https://api.hubapi.com/crm/v3/objects/contacts/${email}?idProperty=email`;
-    const headers = {
-        Authorization: `Bearer ${PRIVATE_APP_ACCESS}`,
-        'Content-Type': 'application/json'
+    res.render('homepage', {
+      title: 'Doctor Records | Integrating With HubSpot I Practicum',
+      records: records
+    });
+  } catch (error) {
+    console.error('Error fetching doctor records:', error.response ? JSON.stringify(error.response.data, null, 2) : error.message);
+    res.status(500).send('Error fetching doctor records. Check console for details.');
+  }
+});
+
+// Form page route
+app.get('/update-cobj', (req, res) => {
+  res.render('updates', {
+    title: 'Update Doctor Record Form | Integrating With HubSpot I Practicum'
+  });
+});
+
+// Form submission route for update
+app.post('/update-cobj', async (req, res) => {
+  try {
+    // Extract form data
+    const { doctor_full_name, doctor_id, doctor_medical_specialty } = req.body;
+
+    console.log('Creating new doctor record with data:', req.body);
+
+    // Create properties object for the API request
+    const properties = {
+      doctor_full_name: doctor_full_name,
+      doctor_id: doctor_id,
+      doctor_medical_specialty: doctor_medical_specialty
     };
 
-    try { 
-        await axios.patch(updateContact, update, { headers } );
-        res.redirect('back');
-    } catch(err) {
-        console.error(err);
-    }
+    // Create new doctor record
+    const response = await hubspotClient.post('/crm/v3/objects/doctors', {
+      properties: properties
+    });
 
+    console.log('Created new doctor record:', JSON.stringify(response.data, null, 2));
+
+    // Redirect back to homepage
+    res.redirect('/');
+  } catch (error) {
+    console.error('Error creating doctor record:', error.response ? JSON.stringify(error.response.data, null, 2) : error.message);
+    res.status(500).send('Error creating doctor record. Check console for details.');
+  }
 });
-*/
 
+// View doctor details route
+app.get('/view-doctor/:id', async (req, res) => {
+  try {
+    const doctorId = req.params.id;
 
-// * Localhost
-app.listen(3000, () => console.log('Listening on http://localhost:3000'));
+    // Get doctor from API using the same format as my successful cURL command
+    const response = await hubspotClient.get(`/crm/v3/objects/doctors/${doctorId}`, {
+      params: {
+        properties: 'doctor_full_name,doctor_medical_specialty,doctor_id',
+        archived: false
+      }
+    });
+
+    const doctorInfo = response.data.properties || {};
+
+    res.render('doctor-details', {
+      title: 'Doctor Details | Integrating With HubSpot I Practicum',
+      doctorId: doctorId,
+      doctor: doctorInfo
+    });
+  } catch (error) {
+    console.error('Error fetching doctor details:', error.response ? error.response.data : error.message);
+
+    res.render('doctor-details', {
+      title: 'Doctor Details | Integrating With HubSpot I Practicum',
+      doctorId: req.params.id,
+      doctor: {
+        doctor_full_name: 'Unknown',
+        doctor_medical_specialty: 'Unknown',
+        doctor_id: 'Unknown'
+      },
+      error: true
+    });
+  }
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});

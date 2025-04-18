@@ -1,0 +1,38 @@
+html
+  head
+    title #{title}
+    link(rel='stylesheet', href='/css/style.css')
+  body
+    h1 Doctor Records
+    a(href='/update-cobj') Add/Update to this table
+
+    if records && records.length > 0
+      // Debug information
+      p Found #{records.length} records
+
+      // Show all properties of the first record
+      if records[0].properties
+        p Available properties: #{Object.keys(records[0].properties).join(', ')}
+
+      table
+        thead
+          tr
+            th Doctor Name
+            th Meddical Specialty
+            th Doctor ID
+            th Actions
+        tbody
+          each doctor in records
+            tr
+              td= doctor.properties.doctor_full_name || 'N/A'
+              td= doctor.properties.doctor_medical_specialty || 'N/A'
+              td= doctor.properties.doctor_id || 'N/A'
+              td
+                a(href=`/view-doctor/${doctor.id}`) View Details
+    else
+      p No doctor records found.
+      p This could be because:
+      ul
+        li You haven't added any doctor records yet
+        li There might be an issue with the API connection
+        li The property names might not match exactly

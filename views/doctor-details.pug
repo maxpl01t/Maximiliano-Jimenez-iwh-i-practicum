@@ -1,0 +1,29 @@
+html
+  head
+    title #{title}
+    link(rel='stylesheet', href='/css/style.css')
+  body
+    h1 Doctor Details
+    a(href='/') Return to the homepage
+
+    if error
+      p.error Unable to retrieve doctor details from the API.
+
+    div.doctor-details
+      h2 Doctor Information
+
+      p 
+        strong Record ID: 
+        span #{doctorId}
+
+      p 
+        strong Name: 
+        span #{doctor.doctor_full_name || 'N/A'}
+
+      p 
+        strong Medical Specialty: 
+        span #{doctor.doctor_medical_specialty || 'N/A'}
+
+      p 
+        strong Doctor ID: 
+        span #{doctor.doctor_id || 'N/A'}

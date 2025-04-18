@@ -1,0 +1,22 @@
+html
+  head
+    title #{title}
+    link(rel='stylesheet', href='/css/style.css')
+  body
+    h1 Add New Doctor Record
+    a(href='/') Return to the homepage
+
+    form(action='/update-cobj', method='POST')
+      div.form-group
+        label(for='doctor_full_name') Doctor Name:
+        input#doctor_full_name(type='text', name='doctor_full_name', required)
+
+      div.form-group
+        label(for='doctor_medical_specialty') Medical Specialty:
+        input#doctor_medical_specialty(type='text', name='doctor_medical_specialty', required)
+
+      div.form-group
+        label(for='doctor_id') Doctor ID:
+        input#doctor_id(type='number', name='doctor_id', required)
+
+      button(type='submit') Create Doctor Record
